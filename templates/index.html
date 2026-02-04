@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MENAG Presentation Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            color: #E07A2F;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        input[type="text"],
+        input[type="file"] {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus,
+        input[type="file"]:focus {
+            outline: none;
+            border-color: #E07A2F;
+        }
+
+        .file-upload {
+            border: 2px dashed #E07A2F;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .file-upload:hover {
+            background: #fff5ef;
+        }
+
+        .file-upload input {
+            display: none;
+        }
+
+        .file-upload-label {
+            color: #E07A2F;
+            font-weight: 600;
+        }
+
+        .file-name {
+            margin-top: 10px;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .checkbox-group input {
+            width: 20px;
+            height: 20px;
+            accent-color: #E07A2F;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #E07A2F 0%, #c96a25 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(224, 122, 47, 0.4);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .progress-container {
+            display: none;
+            margin-top: 30px;
+        }
+
+        .progress-bar {
+            height: 10px;
+            background: #eee;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #E07A2F, #f5a623);
+            width: 0%;
+            transition: width 0.5s;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .progress-text {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+        }
+
+        .results {
+            display: none;
+            margin-top: 30px;
+            padding: 20px;
+            background: #f0fff0;
+            border-radius: 10px;
+            border: 2px solid #4CAF50;
+        }
+
+        .results h3 {
+            color: #4CAF50;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .download-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .download-btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            text-decoration: none;
+            text-align: center;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .download-pptx {
+            background: #E07A2F;
+            color: white;
+        }
+
+        .download-docx {
+            background: #2196F3;
+            color: white;
+        }
+
+        .error {
+            display: none;
+            margin-top: 20px;
+            padding: 15px;
+            background: #ffebee;
+            border-radius: 10px;
+            border: 2px solid #f44336;
+            color: #c62828;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #1565c0;
+        }
+
+        .row {
+            display: flex;
+            gap: 15px;
+        }
+
+        .row .form-group {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>MENAG Generator</h1>
+            <p class="subtitle">Genera presentacions i xuletes automàticament</p>
+
+            <div class="info-box">
+                Puja el PDF del capítol del llibre Koontz i obtindràs un PowerPoint
+                amb ~20 diapositives i un Word amb la xuleta per estudiar.
+            </div>
+
+            <form id="uploadForm">
+                <div class="form-group">
+                    <label>PDF del Capítol</label>
+                    <div class="file-upload" onclick="document.getElementById('pdfFile').click()">
+                        <input type="file" id="pdfFile" name="pdf_file" accept=".pdf" required>
+                        <span class="file-upload-label">Clica o arrossega el PDF aquí</span>
+                        <div class="file-name" id="fileName"></div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="form-group">
+                        <label>Nom del Capítol</label>
+                        <input type="text" id="chapterName" name="chapter_name"
+                               placeholder="ex: KWC04" value="KWC" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Nom del Grup</label>
+                        <input type="text" id="groupName" name="group_name"
+                               placeholder="ex: GRUPG" value="GRUPG" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="skipImages" name="skip_images">
+                        <label for="skipImages" style="margin: 0; font-weight: normal;">
+                            Saltar generació d'imatges (més ràpid)
+                        </label>
+                    </div>
+                </div>
+
+                <button type="submit" id="submitBtn">Generar Presentació</button>
+            </form>
+
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <p class="progress-text" id="progressText">Processant...</p>
+            </div>
+
+            <div class="results" id="results">
+                <h3>Presentació generada!</h3>
+                <p style="text-align: center; margin-bottom: 15px;" id="resultsInfo"></p>
+                <div class="download-buttons">
+                    <a href="#" class="download-btn download-pptx" id="downloadPptx">
+                        Descarregar PPT
+                    </a>
+                    <a href="#" class="download-btn download-docx" id="downloadDocx">
+                        Descarregar Xuleta
+                    </a>
+                </div>
+            </div>
+
+            <div class="error" id="errorBox"></div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('uploadForm');
+        const pdfFile = document.getElementById('pdfFile');
+        const fileName = document.getElementById('fileName');
+        const submitBtn = document.getElementById('submitBtn');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        const results = document.getElementById('results');
+        const resultsInfo = document.getElementById('resultsInfo');
+        const errorBox = document.getElementById('errorBox');
+
+        pdfFile.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                fileName.textContent = this.files[0].name;
+            }
+        });
+
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            // Reset UI
+            progressContainer.style.display = 'block';
+            results.style.display = 'none';
+            errorBox.style.display = 'none';
+            submitBtn.disabled = true;
+            progressFill.style.width = '10%';
+
+            // Preparar dades
+            const formData = new FormData();
+            formData.append('pdf_file', pdfFile.files[0]);
+            formData.append('chapter_name', document.getElementById('chapterName').value);
+            formData.append('group_name', document.getElementById('groupName').value);
+            formData.append('skip_images', document.getElementById('skipImages').checked);
+
+            try {
+                // Pujar fitxer
+                const uploadResponse = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!uploadResponse.ok) {
+                    const error = await uploadResponse.json();
+                    throw new Error(error.error || 'Error pujant el fitxer');
+                }
+
+                const { task_id } = await uploadResponse.json();
+
+                // Poll status
+                let progress = 10;
+                const pollInterval = setInterval(async () => {
+                    const statusResponse = await fetch(`/status/${task_id}`);
+                    const status = await statusResponse.json();
+
+                    progressText.textContent = status.progress;
+
+                    if (status.status === 'processing') {
+                        progress = Math.min(progress + 5, 90);
+                        progressFill.style.width = progress + '%';
+                    } else if (status.status === 'completed') {
+                        clearInterval(pollInterval);
+                        progressFill.style.width = '100%';
+                        progressContainer.style.display = 'none';
+
+                        // Mostrar resultats
+                        results.style.display = 'block';
+                        resultsInfo.textContent = `${status.slides_count} diapositives generades`;
+                        document.getElementById('downloadPptx').href = `/download/${task_id}/pptx`;
+                        document.getElementById('downloadDocx').href = `/download/${task_id}/docx`;
+                        submitBtn.disabled = false;
+                    } else if (status.status === 'error') {
+                        clearInterval(pollInterval);
+                        throw new Error(status.error);
+                    }
+                }, 2000);
+
+            } catch (error) {
+                progressContainer.style.display = 'none';
+                errorBox.style.display = 'block';
+                errorBox.textContent = error.message;
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

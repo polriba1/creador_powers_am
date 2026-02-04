@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuracio - MENAG Generator</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        .container { max-width: 600px; margin: 0 auto; }
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #E07A2F;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .nav {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .nav a {
+            color: #E07A2F;
+            text-decoration: none;
+            font-weight: 600;
+            padding: 10px 20px;
+            border-radius: 8px;
+            transition: background 0.3s;
+        }
+        .nav a:hover { background: #fff5ef; }
+        .nav a.active { background: #E07A2F; color: white; }
+        .form-group { margin-bottom: 20px; }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+        }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px;
+            font-family: monospace;
+        }
+        input:focus { outline: none; border-color: #E07A2F; }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        .status.ok { background: #e8f5e9; color: #2e7d32; }
+        .status.missing { background: #ffebee; color: #c62828; }
+        button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #E07A2F 0%, #c96a25 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(224, 122, 47, 0.4);
+        }
+        .info-box {
+            background: #e3f2fd;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #1565c0;
+        }
+        .success-box {
+            background: #e8f5e9;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            color: #2e7d32;
+            display: none;
+        }
+        .help-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>Configuracio</h1>
+            <p class="subtitle">Gestiona les teves API keys</p>
+
+            <nav class="nav">
+                <a href="/">Generador</a>
+                <a href="/settings" class="active">Configuracio</a>
+                <a href="/stats">Estadistiques</a>
+            </nav>
+
+            <div class="info-box">
+                Les API keys es guarden localment a la base de dades.
+                Necessites una key d'Anthropic (Claude) i una de Google (Gemini).
+            </div>
+
+            <form id="keysForm">
+                <div class="form-group">
+                    <label>
+                        Anthropic API Key
+                        <span class="status" id="anthropicStatus"></span>
+                    </label>
+                    <input type="password" id="anthropicKey" placeholder="sk-ant-...">
+                    <p class="help-text">Obtenir a: <a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a></p>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        Google API Key
+                        <span class="status" id="googleStatus"></span>
+                    </label>
+                    <input type="password" id="googleKey" placeholder="AIza...">
+                    <p class="help-text">Obtenir a: <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a></p>
+                </div>
+
+                <button type="submit">Guardar API Keys</button>
+            </form>
+
+            <div class="success-box" id="successBox">
+                API keys guardades correctament!
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Carregar estat actual
+        async function loadStatus() {
+            const response = await fetch('/api/keys');
+            const data = await response.json();
+
+            const anthropicStatus = document.getElementById('anthropicStatus');
+            const googleStatus = document.getElementById('googleStatus');
+
+            if (data.anthropic.configured) {
+                anthropicStatus.textContent = 'Configurada';
+                anthropicStatus.className = 'status ok';
+                document.getElementById('anthropicKey').placeholder = data.anthropic.masked;
+            } else {
+                anthropicStatus.textContent = 'No configurada';
+                anthropicStatus.className = 'status missing';
+            }
+
+            if (data.google.configured) {
+                googleStatus.textContent = 'Configurada';
+                googleStatus.className = 'status ok';
+                document.getElementById('googleKey').placeholder = data.google.masked;
+            } else {
+                googleStatus.textContent = 'No configurada';
+                googleStatus.className = 'status missing';
+            }
+        }
+
+        loadStatus();
+
+        // Guardar keys
+        document.getElementById('keysForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const anthropicKey = document.getElementById('anthropicKey').value;
+            const googleKey = document.getElementById('googleKey').value;
+
+            const response = await fetch('/api/keys', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    anthropic_key: anthropicKey || null,
+                    google_key: googleKey || null
+                })
+            });
+
+            if (response.ok) {
+                document.getElementById('successBox').style.display = 'block';
+                document.getElementById('anthropicKey').value = '';
+                document.getElementById('googleKey').value = '';
+                loadStatus();
+                setTimeout(() => {
+                    document.getElementById('successBox').style.display = 'none';
+                }, 3000);
+            }
+        });
+    </script>
+</body>
+</html>
