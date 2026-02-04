@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Descarregues - MENAG Generator</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #E07A2F;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .nav {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .nav a {
+            color: #E07A2F;
+            text-decoration: none;
+            font-weight: 600;
+            padding: 10px 20px;
+            border-radius: 8px;
+            transition: background 0.3s;
+        }
+        .nav a:hover { background: #fff5ef; }
+        .nav a.active { background: #E07A2F; color: white; }
+        .presentation-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .presentation-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border-left: 4px solid #E07A2F;
+        }
+        .presentation-info {
+            flex: 1;
+        }
+        .presentation-title {
+            font-weight: 700;
+            font-size: 1.1em;
+            color: #333;
+        }
+        .presentation-meta {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        .presentation-meta span {
+            margin-right: 15px;
+        }
+        .presentation-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .btn {
+            padding: 10px 18px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            text-decoration: none;
+            transition: transform 0.2s;
+        }
+        .btn:hover { transform: translateY(-2px); }
+        .btn-download {
+            background: #E07A2F;
+            color: white;
+        }
+        .btn-delete {
+            background: #dc3545;
+            color: white;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+        .empty-state h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .cost-badge {
+            background: #E07A2F;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .filter-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .filter-row input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 14px;
+        }
+        .filter-row input:focus {
+            outline: none;
+            border-color: #E07A2F;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>Les Meves Descarregues</h1>
+            <p class="subtitle">Historial de presentacions generades</p>
+
+            <nav class="nav">
+                <a href="/">Generador</a>
+                <a href="/settings">Configuracio</a>
+                <a href="/stats">Estadistiques</a>
+                <a href="/downloads" class="active">Descarregues</a>
+            </nav>
+
+            <div class="filter-row">
+                <input type="text" id="userFilter" placeholder="Filtrar per nom d'usuari...">
+            </div>
+
+            <div class="presentation-list" id="presentationList">
+                <div class="empty-state">
+                    <h3>Carregant...</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('ca-ES', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function formatCost(cost) {
+            return '$' + (cost || 0).toFixed(4);
+        }
+
+        async function loadPresentations(userFilter = '') {
+            const list = document.getElementById('presentationList');
+
+            try {
+                let url = '/api/presentations';
+                if (userFilter) {
+                    url += `?user=${encodeURIComponent(userFilter)}`;
+                }
+
+                const response = await fetch(url);
+                const presentations = await response.json();
+
+                if (presentations.length === 0) {
+                    list.innerHTML = `
+                        <div class="empty-state">
+                            <h3>Cap presentacio trobada</h3>
+                            <p>Les presentacions generades apareixeran aqui</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                list.innerHTML = presentations.map(p => `
+                    <div class="presentation-item" id="pres-${p.task_id}">
+                        <div class="presentation-info">
+                            <div class="presentation-title">${p.chapter_name} - ${p.group_name}</div>
+                            <div class="presentation-meta">
+                                <span>Usuari: <strong>${p.user_name || 'Anonim'}</strong></span>
+                                <span>Slides: ${p.slides_count}</span>
+                                <span class="cost-badge">${formatCost(p.cost_usd)}</span>
+                                <span>${formatDate(p.created_at)}</span>
+                            </div>
+                        </div>
+                        <div class="presentation-actions">
+                            <a href="/download/${p.task_id}/pptx" class="btn btn-download">Descarregar</a>
+                            <button class="btn btn-delete" onclick="deletePresentation('${p.task_id}')">Esborrar</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <h3>Error carregant presentacions</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function deletePresentation(taskId) {
+            if (!confirm('Segur que vols esborrar aquesta presentacio?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/presentations/${taskId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    document.getElementById(`pres-${taskId}`).remove();
+                } else {
+                    alert('Error esborrant la presentacio');
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+
+        // Carregar presentacions
+        loadPresentations();
+
+        // Filtre per usuari
+        let filterTimeout;
+        document.getElementById('userFilter').addEventListener('input', (e) => {
+            clearTimeout(filterTimeout);
+            filterTimeout = setTimeout(() => {
+                loadPresentations(e.target.value);
+            }, 300);
+        });
+    </script>
+</body>
+</html>

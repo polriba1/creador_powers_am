@@ -29,7 +29,9 @@ from database import (
     init_db, get_api_keys, set_api_keys, has_valid_keys,
     get_session_stats, get_global_stats, increment_presentations, log_usage,
     register_user, create_session_with_user, update_user_stats,
-    get_user_stats, get_all_users_stats
+    get_user_stats, get_all_users_stats,
+    save_presentation, get_user_presentations, get_all_presentations,
+    delete_presentation, get_presentation_path
 )
 
 # Inicialitzar base de dades
@@ -107,6 +109,17 @@ def process_presentation(task_id, pdf_path, chapter_name, group_name, skip_image
         # Actualitzar estadístiques de l'usuari
         if user_name:
             update_user_stats(user_name, session_cost, presentations=1)
+
+        # Guardar presentació a la base de dades
+        save_presentation(
+            task_id=task_id,
+            user_name=user_name or "anonymous",
+            chapter_name=chapter_name,
+            group_name=group_name,
+            slides_count=len(plan.slides),
+            cost_usd=session_cost,
+            pptx_path=str(pptx_path)
+        )
 
         # Completat
         tasks[task_id]['status'] = 'completed'
@@ -316,6 +329,34 @@ def settings_page():
 def stats_page():
     """Pàgina d'estadístiques."""
     return render_template('stats.html')
+
+
+@app.route('/downloads')
+def downloads_page():
+    """Pàgina d'historial de descàrregues."""
+    return render_template('downloads.html')
+
+
+# ============================================================================
+# ENDPOINTS PER GESTIÓ DE PRESENTACIONS
+# ============================================================================
+
+@app.route('/api/presentations')
+def list_presentations():
+    """Llista totes les presentacions."""
+    user_name = request.args.get('user')
+    if user_name:
+        return jsonify(get_user_presentations(user_name))
+    return jsonify(get_all_presentations())
+
+
+@app.route('/api/presentations/<task_id>', methods=['DELETE'])
+def remove_presentation(task_id):
+    """Elimina una presentació."""
+    success = delete_presentation(task_id)
+    if success:
+        return jsonify({'success': True})
+    return jsonify({'error': 'Presentació no trobada'}), 404
 
 
 # Crear directori de templates si no existeix
@@ -590,8 +631,9 @@ INDEX_HTML = '''<!DOCTYPE html>
 
             <nav class="nav">
                 <a href="/" class="active">Generador</a>
-                <a href="/settings">Configuracio</a>
+                <a href="/downloads">Descarregues</a>
                 <a href="/stats">Estadistiques</a>
+                <a href="/settings">Configuracio</a>
             </nav>
 
             <div class="info-box">
@@ -677,6 +719,17 @@ INDEX_HTML = '''<!DOCTYPE html>
         const resultsInfo = document.getElementById('resultsInfo');
         const errorBox = document.getElementById('errorBox');
 
+        // Funcio per mostrar resultats completats
+        function showCompletedResults(taskData) {
+            progressContainer.style.display = 'none';
+            results.style.display = 'block';
+            const cost = taskData.cost_usd ? parseFloat(taskData.cost_usd).toFixed(4) : '0.0000';
+            resultsInfo.innerHTML = `${taskData.slides_count} diapositives generades<br><span style="color:#E07A2F; font-weight:bold;">Cost: $${cost}</span>`;
+            document.getElementById('downloadPptx').href = `/download/${taskData.task_id}/pptx`;
+            document.getElementById('downloadDocx').href = `/download/${taskData.task_id}/docx`;
+            submitBtn.disabled = false;
+        }
+
         // Funcio per fer polling d'una tasca
         function pollTask(task_id) {
             progressContainer.style.display = 'block';
@@ -691,6 +744,7 @@ INDEX_HTML = '''<!DOCTYPE html>
                         // Tasca no trobada (pot ser que el servidor s'hagi reiniciat)
                         clearInterval(pollInterval);
                         localStorage.removeItem('active_task');
+                        localStorage.removeItem('completed_task');
                         progressContainer.style.display = 'none';
                         submitBtn.disabled = false;
                         return;
@@ -706,15 +760,17 @@ INDEX_HTML = '''<!DOCTYPE html>
                         clearInterval(pollInterval);
                         localStorage.removeItem('active_task');
                         progressFill.style.width = '100%';
-                        progressContainer.style.display = 'none';
 
-                        // Mostrar resultats
-                        results.style.display = 'block';
-                        const cost = status.cost_usd ? status.cost_usd.toFixed(4) : '0.0000';
-                        resultsInfo.innerHTML = `${status.slides_count} diapositives generades<br><span style="color:#E07A2F; font-weight:bold;">Cost: $${cost}</span>`;
-                        document.getElementById('downloadPptx').href = `/download/${task_id}/pptx`;
-                        document.getElementById('downloadDocx').href = `/download/${task_id}/docx`;
-                        submitBtn.disabled = false;
+                        // Guardar tasca completada per poder recuperar-la
+                        const completedData = {
+                            task_id: task_id,
+                            slides_count: status.slides_count,
+                            cost_usd: status.cost_usd,
+                            timestamp: Date.now()
+                        };
+                        localStorage.setItem('completed_task', JSON.stringify(completedData));
+
+                        showCompletedResults(completedData);
                     } else if (status.status === 'error') {
                         clearInterval(pollInterval);
                         localStorage.removeItem('active_task');
@@ -730,11 +786,25 @@ INDEX_HTML = '''<!DOCTYPE html>
             }, 2000);
         }
 
-        // Comprovar si hi ha una tasca activa al carregar la pagina
+        // Al carregar la pagina, comprovar tasques
         const activeTask = localStorage.getItem('active_task');
+        const completedTask = localStorage.getItem('completed_task');
+
         if (activeTask) {
+            // Hi ha una tasca en proces
             console.log('Recuperant tasca activa:', activeTask);
             pollTask(activeTask);
+        } else if (completedTask) {
+            // Hi ha una tasca completada recent (menys de 24h)
+            const taskData = JSON.parse(completedTask);
+            const hoursSinceCompletion = (Date.now() - taskData.timestamp) / (1000 * 60 * 60);
+            if (hoursSinceCompletion < 24) {
+                console.log('Mostrant tasca completada:', taskData.task_id);
+                showCompletedResults(taskData);
+            } else {
+                // Massa antiga, esborrar
+                localStorage.removeItem('completed_task');
+            }
         }
 
         pdfFile.addEventListener('change', function() {
@@ -745,6 +815,9 @@ INDEX_HTML = '''<!DOCTYPE html>
 
         form.addEventListener('submit', async function(e) {
             e.preventDefault();
+
+            // Netejar tasca anterior
+            localStorage.removeItem('completed_task');
 
             // Reset UI
             progressContainer.style.display = 'block';

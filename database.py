@@ -76,6 +76,22 @@ def init_db():
         )
     """)
 
+    # Taula de presentacions generades (historial de descàrregues)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS presentations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            task_id TEXT UNIQUE,
+            user_name TEXT,
+            chapter_name TEXT,
+            group_name TEXT,
+            slides_count INTEGER,
+            cost_usd REAL,
+            pptx_path TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            deleted INTEGER DEFAULT 0
+        )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -426,6 +442,120 @@ def get_all_users_stats() -> List[Dict]:
         }
         for u in users
     ]
+
+
+# ============================================================================
+# FUNCIONS PER GESTIÓ DE PRESENTACIONS
+# ============================================================================
+
+def save_presentation(
+    task_id: str,
+    user_name: str,
+    chapter_name: str,
+    group_name: str,
+    slides_count: int,
+    cost_usd: float,
+    pptx_path: str
+):
+    """Guarda una presentació generada."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT OR REPLACE INTO presentations
+        (task_id, user_name, chapter_name, group_name, slides_count, cost_usd, pptx_path)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (task_id, user_name, chapter_name, group_name, slides_count, cost_usd, pptx_path))
+
+    conn.commit()
+    conn.close()
+
+
+def get_user_presentations(user_name: str) -> List[Dict]:
+    """Obté totes les presentacions d'un usuari."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT task_id, chapter_name, group_name, slides_count, cost_usd, pptx_path, created_at
+        FROM presentations
+        WHERE user_name = ? AND deleted = 0
+        ORDER BY created_at DESC
+    """, (user_name,))
+    presentations = cursor.fetchall()
+    conn.close()
+
+    return [
+        {
+            "task_id": p[0],
+            "chapter_name": p[1],
+            "group_name": p[2],
+            "slides_count": p[3],
+            "cost_usd": p[4],
+            "pptx_path": p[5],
+            "created_at": p[6]
+        }
+        for p in presentations
+    ]
+
+
+def get_all_presentations() -> List[Dict]:
+    """Obté totes les presentacions."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT task_id, user_name, chapter_name, group_name, slides_count, cost_usd, pptx_path, created_at
+        FROM presentations
+        WHERE deleted = 0
+        ORDER BY created_at DESC
+    """)
+    presentations = cursor.fetchall()
+    conn.close()
+
+    return [
+        {
+            "task_id": p[0],
+            "user_name": p[1],
+            "chapter_name": p[2],
+            "group_name": p[3],
+            "slides_count": p[4],
+            "cost_usd": p[5],
+            "pptx_path": p[6],
+            "created_at": p[7]
+        }
+        for p in presentations
+    ]
+
+
+def delete_presentation(task_id: str) -> bool:
+    """Marca una presentació com a eliminada."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        UPDATE presentations SET deleted = 1 WHERE task_id = ?
+    """, (task_id,))
+
+    affected = cursor.rowcount
+    conn.commit()
+    conn.close()
+
+    return affected > 0
+
+
+def get_presentation_path(task_id: str) -> Optional[str]:
+    """Obté el path d'una presentació pel task_id."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT pptx_path FROM presentations WHERE task_id = ? AND deleted = 0
+    """, (task_id,))
+    result = cursor.fetchone()
+    conn.close()
+
+    return result[0] if result else None
 
 
 # Inicialitzar BD al importar
