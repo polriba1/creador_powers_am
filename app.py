@@ -274,6 +274,23 @@ def save_keys():
     anthropic_key = data.get('anthropic_key')
     google_key = data.get('google_key')
 
+    errors = []
+
+    # Validar i netejar Anthropic key
+    if anthropic_key:
+        anthropic_key = anthropic_key.strip()
+        if not anthropic_key.startswith('sk-ant-'):
+            errors.append("La clau d'Anthropic ha de començar amb 'sk-ant-'")
+
+    # Validar i netejar Google key
+    if google_key:
+        google_key = google_key.strip()
+        if not google_key.startswith('AIza'):
+            errors.append("La clau de Google ha de començar amb 'AIza'")
+
+    if errors:
+        return jsonify({'success': False, 'errors': errors}), 400
+
     set_api_keys(anthropic_key=anthropic_key, google_key=google_key)
 
     return jsonify({

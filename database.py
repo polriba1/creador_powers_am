@@ -120,18 +120,26 @@ def set_config(key: str, value: str):
 
 def get_api_keys() -> Dict[str, str]:
     """Obté les API keys configurades."""
+    anthropic_key = get_config("anthropic_api_key") or ""
+    google_key = get_config("google_api_key") or ""
     return {
-        "anthropic": get_config("anthropic_api_key") or "",
-        "google": get_config("google_api_key") or ""
+        "anthropic": anthropic_key.strip() if anthropic_key else "",
+        "google": google_key.strip() if google_key else ""
     }
 
 
 def set_api_keys(anthropic_key: str = None, google_key: str = None):
     """Estableix les API keys."""
     if anthropic_key is not None:
-        set_config("anthropic_api_key", anthropic_key)
+        # Netejar espais en blanc i validar
+        anthropic_key = anthropic_key.strip()
+        if anthropic_key:  # Només guardar si no és buit
+            set_config("anthropic_api_key", anthropic_key)
     if google_key is not None:
-        set_config("google_api_key", google_key)
+        # Netejar espais en blanc i validar
+        google_key = google_key.strip()
+        if google_key:  # Només guardar si no és buit
+            set_config("google_api_key", google_key)
 
 
 def has_valid_keys() -> Dict[str, bool]:

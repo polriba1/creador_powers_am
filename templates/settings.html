@@ -104,6 +104,14 @@
             color: #2e7d32;
             display: none;
         }
+        .error-box {
+            background: #ffebee;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            color: #c62828;
+            display: none;
+        }
         .help-text {
             font-size: 12px;
             color: #666;
@@ -154,6 +162,9 @@
             <div class="success-box" id="successBox">
                 API keys guardades correctament!
             </div>
+
+            <div class="error-box" id="errorBox">
+            </div>
         </div>
     </div>
 
@@ -191,8 +202,14 @@
         document.getElementById('keysForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const anthropicKey = document.getElementById('anthropicKey').value;
-            const googleKey = document.getElementById('googleKey').value;
+            const anthropicKey = document.getElementById('anthropicKey').value.trim();
+            const googleKey = document.getElementById('googleKey').value.trim();
+            const errorBox = document.getElementById('errorBox');
+            const successBox = document.getElementById('successBox');
+
+            // Ocultar missatges anteriors
+            errorBox.style.display = 'none';
+            successBox.style.display = 'none';
 
             const response = await fetch('/api/keys', {
                 method: 'POST',
@@ -203,14 +220,21 @@
                 })
             });
 
+            const data = await response.json();
+
             if (response.ok) {
-                document.getElementById('successBox').style.display = 'block';
+                successBox.style.display = 'block';
                 document.getElementById('anthropicKey').value = '';
                 document.getElementById('googleKey').value = '';
                 loadStatus();
                 setTimeout(() => {
-                    document.getElementById('successBox').style.display = 'none';
+                    successBox.style.display = 'none';
                 }, 3000);
+            } else {
+                // Mostrar errors de validació
+                const errors = data.errors || ['Error desconegut'];
+                errorBox.innerHTML = errors.join('<br>');
+                errorBox.style.display = 'block';
             }
         });
     </script>
