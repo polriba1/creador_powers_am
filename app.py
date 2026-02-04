@@ -677,6 +677,66 @@ INDEX_HTML = '''<!DOCTYPE html>
         const resultsInfo = document.getElementById('resultsInfo');
         const errorBox = document.getElementById('errorBox');
 
+        // Funcio per fer polling d'una tasca
+        function pollTask(task_id) {
+            progressContainer.style.display = 'block';
+            results.style.display = 'none';
+            submitBtn.disabled = true;
+            let progress = 10;
+
+            const pollInterval = setInterval(async () => {
+                try {
+                    const statusResponse = await fetch(`/status/${task_id}`);
+                    if (!statusResponse.ok) {
+                        // Tasca no trobada (pot ser que el servidor s'hagi reiniciat)
+                        clearInterval(pollInterval);
+                        localStorage.removeItem('active_task');
+                        progressContainer.style.display = 'none';
+                        submitBtn.disabled = false;
+                        return;
+                    }
+                    const status = await statusResponse.json();
+
+                    progressText.textContent = status.progress;
+
+                    if (status.status === 'processing' || status.status === 'queued') {
+                        progress = Math.min(progress + 2, 90);
+                        progressFill.style.width = progress + '%';
+                    } else if (status.status === 'completed') {
+                        clearInterval(pollInterval);
+                        localStorage.removeItem('active_task');
+                        progressFill.style.width = '100%';
+                        progressContainer.style.display = 'none';
+
+                        // Mostrar resultats
+                        results.style.display = 'block';
+                        const cost = status.cost_usd ? status.cost_usd.toFixed(4) : '0.0000';
+                        resultsInfo.innerHTML = `${status.slides_count} diapositives generades<br><span style="color:#E07A2F; font-weight:bold;">Cost: $${cost}</span>`;
+                        document.getElementById('downloadPptx').href = `/download/${task_id}/pptx`;
+                        document.getElementById('downloadDocx').href = `/download/${task_id}/docx`;
+                        submitBtn.disabled = false;
+                    } else if (status.status === 'error') {
+                        clearInterval(pollInterval);
+                        localStorage.removeItem('active_task');
+                        progressContainer.style.display = 'none';
+                        errorBox.style.display = 'block';
+                        errorBox.textContent = status.error || 'Error desconegut';
+                        submitBtn.disabled = false;
+                    }
+                } catch (e) {
+                    // Error de xarxa, continuar intentant
+                    console.log('Error polling:', e);
+                }
+            }, 2000);
+        }
+
+        // Comprovar si hi ha una tasca activa al carregar la pagina
+        const activeTask = localStorage.getItem('active_task');
+        if (activeTask) {
+            console.log('Recuperant tasca activa:', activeTask);
+            pollTask(activeTask);
+        }
+
         pdfFile.addEventListener('change', function() {
             if (this.files.length > 0) {
                 fileName.textContent = this.files[0].name;
@@ -715,34 +775,11 @@ INDEX_HTML = '''<!DOCTYPE html>
 
                 const { task_id } = await uploadResponse.json();
 
-                // Poll status
-                let progress = 10;
-                const pollInterval = setInterval(async () => {
-                    const statusResponse = await fetch(`/status/${task_id}`);
-                    const status = await statusResponse.json();
+                // Guardar task_id a localStorage per recuperar-lo si es refresca
+                localStorage.setItem('active_task', task_id);
 
-                    progressText.textContent = status.progress;
-
-                    if (status.status === 'processing') {
-                        progress = Math.min(progress + 5, 90);
-                        progressFill.style.width = progress + '%';
-                    } else if (status.status === 'completed') {
-                        clearInterval(pollInterval);
-                        progressFill.style.width = '100%';
-                        progressContainer.style.display = 'none';
-
-                        // Mostrar resultats
-                        results.style.display = 'block';
-                        const cost = status.cost_usd ? status.cost_usd.toFixed(4) : '0.0000';
-                        resultsInfo.innerHTML = `${status.slides_count} diapositives generades<br><span style="color:#E07A2F; font-weight:bold;">Cost: $${cost}</span>`;
-                        document.getElementById('downloadPptx').href = `/download/${task_id}/pptx`;
-                        document.getElementById('downloadDocx').href = `/download/${task_id}/docx`;
-                        submitBtn.disabled = false;
-                    } else if (status.status === 'error') {
-                        clearInterval(pollInterval);
-                        throw new Error(status.error);
-                    }
-                }, 2000);
+                // Iniciar polling
+                pollTask(task_id);
 
             } catch (error) {
                 progressContainer.style.display = 'none';
